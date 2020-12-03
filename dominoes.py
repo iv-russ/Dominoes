@@ -1,4 +1,4 @@
-from math import sin, cos, sqrt, asin, acos, atan, pi
+from math import sin, cos, tan, sqrt, asin, acos, atan, pi
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -55,6 +55,29 @@ def sum_of_squared_xi(N, theta_N, beta, gamma):
     return summ
 
 
+def A_eff(theta_k, beta, gamma, mu):
+    theta_k_minus_1 = previous_angle(angle=theta_k, beta=beta, gamma=gamma)
+    return sqrt(1 + (beta - gamma / sin(theta_k)) ** 2 - 2 * (beta - gamma / sin(theta_k)) * cos(theta_k_minus_1)) - \
+           gamma / tan(theta_k) - mu * gamma
+
+
+def B_eff(theta_k, beta, gamma, mu):
+    return sqrt(1 - (beta * sin(theta_k) - gamma) ** 2) + mu * (beta * sin(theta_k) - gamma)
+
+
+def sum_of_xi_and_coefs(N, theta_N, beta, gamma, mu):
+    summ = 0
+    prod = 1
+    theta_i = theta_N
+    for i in range(N, 0, -1):
+        summ += prod
+        prod *= xi(theta=theta_i, beta=beta, gamma=gamma) * \
+                A_eff(theta_k=theta_i, beta=beta, gamma=gamma, mu=mu) / \
+                B_eff(theta_k=theta_i, beta=beta, gamma=gamma, mu=mu)
+        theta_i = previous_angle(angle=theta_i, beta=beta, gamma=gamma)
+    return summ
+
+
 def omega_intermediate(theta, omega_0, N, beta, gamma, h):
     """
     :param theta: theta_N
@@ -69,18 +92,20 @@ def omega_intermediate(theta, omega_0, N, beta, gamma, h):
                                                                                    gamma=gamma))
              + omega_0 ** 2 * sum_of_squared_xi(N=N, theta_N=pi / 2, beta=beta, gamma=gamma))
             / sum_of_squared_xi(N=N, theta_N=theta, beta=beta, gamma=gamma))
-    except ValueError as e:
+    except ValueError:
         print("WARNING: small energy; answers are incorrect")
         print('It is less than zero ', (3 * g / h * 1 / sqrt(1 + gamma ** 2) *
-             (sum_of_sin(N=N, theta_N=pi / 2, beta=beta, gamma=gamma) - sum_of_sin(N=N, theta_N=theta, beta=beta,
-                                                                                   gamma=gamma))
-             + omega_0 ** 2 * sum_of_squared_xi(N=N, theta_N=pi / 2, beta=beta, gamma=gamma))
-            / sum_of_squared_xi(N=N, theta_N=theta, beta=beta, gamma=gamma))
+                                        (sum_of_sin(N=N, theta_N=pi / 2, beta=beta, gamma=gamma) - sum_of_sin(N=N,
+                                                                                                              theta_N=theta,
+                                                                                                              beta=beta,
+                                                                                                              gamma=gamma))
+                                        + omega_0 ** 2 * sum_of_squared_xi(N=N, theta_N=pi / 2, beta=beta, gamma=gamma))
+              / sum_of_squared_xi(N=N, theta_N=theta, beta=beta, gamma=gamma))
         print('sum_of_squared_xi ', sum_of_squared_xi(N=N, theta_N=pi / 2, beta=beta, gamma=gamma), 'N', N)
         return 1
 
 
-def omega_after_collision(omega_before_collision, N, beta, gamma):
+def omega_after_collision(omega_before_collision, N, beta, gamma, mu):
     """
     calculate collision
     :param omega_before_collision:
@@ -89,18 +114,19 @@ def omega_after_collision(omega_before_collision, N, beta, gamma):
     :param gamma:
     :return:
     """
-    return omega_before_collision * sum_of_squared_xi(N=N, theta_N=previous_angle(angle=pi/2, beta=beta, gamma=gamma),
-                                                      beta=beta, gamma=gamma) / sum_of_squared_xi(N=N+1,
-                                                                                                  theta_N=pi / 2,
-                                                                                                  beta=beta,
-                                                                                                  gamma=gamma)
+    return omega_before_collision * sum_of_xi_and_coefs(N=N,
+                                                        theta_N=previous_angle(angle=pi / 2, beta=beta, gamma=gamma),
+                                                        beta=beta, gamma=gamma, mu=mu) / sum_of_xi_and_coefs(N=N + 1,
+                                                                                                             theta_N=pi / 2,
+                                                                                                             beta=beta,
+                                                                                                             gamma=gamma,
+                                                                                                             mu=mu)
 
 
-def asymptotic_velocity(n, omega_initial, beta, gamma):
+def asymptotic_velocity(n, omega_initial, beta, gamma, mu):
     times_min = []
     times_max = []
     times = [0]
-    # t_0 = float(input("t_0 = "))
     omega_last_in_vertical_position = omega_initial
     for i in range(1, n + 1):  # i - number of involved dominoes
         omegas = [omega_last_in_vertical_position]
@@ -116,16 +142,15 @@ def asymptotic_velocity(n, omega_initial, beta, gamma):
         times_max.append(t_max)
         times.append(times[-1] + (t_min + t_max) / 2)
         omega_last_in_vertical_position = omega_after_collision(omega_before_collision=omegas[-1], N=i, beta=beta,
-                                                                gamma=gamma)
+                                                                gamma=gamma, mu=mu)
 
     # print(*map(lambda x: x + t_0 - times[1], times[2:]), sep='\n')
     v_min, v_max = s / times_min[-1], s / times_max[-1]  # v_max, v_min
-    # return v_max, v_min
-    return v_max, v_min
-
+    return v_max, v_min, (v_max + v_min)/2
 
 
 g = 9.8
+mu = 0
 n = 20
 DEPTH = 100
 
@@ -135,13 +160,6 @@ d = 0.01
 # beta = s / h
 gamma = d / h
 omega_initial = sqrt(3 * g / h * 1 / (1 + gamma ** 2) * (sqrt(1 + gamma ** 2) - 1)) + 0.01
-# omega_initial += 5.5
-# print(omega_initial)
-# print()
-
-
-# delta = pi/2 - previous_angle(angle=pi/2, beta=beta, gamma=gamma)
-# d_theta = delta / DEPTH
 
 
 def main():
@@ -158,7 +176,7 @@ def main():
         delta = pi / 2 - previous_angle(angle=pi / 2, beta=beta, gamma=gamma)
         d_theta = delta / DEPTH
 
-        v_max, v_min = asymptotic_velocity(n=n, omega_initial=omega_initial, beta=beta, gamma=gamma)
+        v_max, v_min, v = asymptotic_velocity(n=n, omega_initial=omega_initial, beta=beta, gamma=gamma, mu=mu)
         v_max_array.append(v_max)
         v_min_array.append(v_min)
     plt.plot(s_array, v_max_array, s_array, v_min_array)
@@ -168,12 +186,19 @@ def main():
 
 def main1():
     global d_theta, delta, s
-    s = 0.06
+    s = 0.03
     beta = s / h
     delta = pi / 2 - previous_angle(angle=pi / 2, beta=beta, gamma=gamma)
     d_theta = delta / DEPTH
 
-    print(asymptotic_velocity(n=n, omega_initial=omega_initial, beta=beta, gamma=gamma))
+    # mu_array = np.arange(-0.5, 0.5, 0.01)
+    # v_array =[]
+    # for mu in mu_array:
+    #     v_array.append(asymptotic_velocity(n=n, omega_initial=omega_initial, beta=beta, gamma=gamma, mu=mu))
+    # plt.plot(mu_array, v_array)
+    # plt.grid()
+    # plt.show()
+    print(asymptotic_velocity(n=n, omega_initial=omega_initial, beta=beta, gamma=gamma, mu=mu))
 
 
 if __name__ == '__main__':
