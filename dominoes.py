@@ -140,7 +140,20 @@ def omega_after_collision(omega_before_collision, N, beta, gamma, mu):
     # print(sum_of_xi_and_coefs(N=N, theta_N=previous_angle(angle=pi / 2, beta=beta, gamma=gamma), beta=beta, gamma=gamma,
     #                           mu=0))
     # print(sum_of_xi_and_coefs(N=N + 1, theta_N=pi / 2, beta=beta, gamma=gamma, mu=0))
-    return omega_before_collision * \
+    print(omega_before_collision)
+    omega_after = omega_before_collision * A_eff(theta_k=pi / 2, beta=beta, gamma=gamma, mu=mu) / B_eff(theta_k=pi / 2,
+                                                                                                 beta=beta, gamma=gamma,
+                                                                                                 mu=mu) * \
+           sum_of_xi_and_coefs(N=N, theta_N=previous_angle(angle=pi / 2, beta=beta, gamma=gamma), beta=beta,
+                               gamma=gamma, mu=mu) / sum_of_xi_and_coefs(N=N + 1,
+                                                                         theta_N=pi / 2,
+                                                                         beta=beta,
+                                                                         gamma=gamma,
+                                                                         mu=mu)
+    print(omega_after)
+    return omega_before_collision * A_eff(theta_k=pi / 2, beta=beta, gamma=gamma, mu=mu) / B_eff(theta_k=pi / 2,
+                                                                                                 beta=beta, gamma=gamma,
+                                                                                                 mu=mu) * \
            sum_of_xi_and_coefs(N=N, theta_N=previous_angle(angle=pi / 2, beta=beta, gamma=gamma), beta=beta,
                                gamma=gamma, mu=mu) / sum_of_xi_and_coefs(N=N + 1,
                                                                          theta_N=pi / 2,
@@ -211,12 +224,12 @@ def asymptotic_velocity(n, omega_initial, beta, gamma, mu):
 
 g = 9.8
 mu = 0
-n = 30
+n = 40
 DEPTH = 100
 
-h = 0.08
+h = 0.117
 # s = 0.04
-d = 0.01
+d = 0.008
 # beta = s / h
 gamma = d / h
 omega_initial = sqrt(3 * g / h * 1 / (1 + gamma ** 2) * (sqrt(1 + gamma ** 2) - 1)) + 0.01
@@ -245,7 +258,7 @@ def main():
 
 def main1():
     global d_theta, delta, s
-    s = 0.05
+    s = 0.02
     beta = s / h
     delta = pi / 2 - previous_angle(angle=pi / 2, beta=beta, gamma=gamma)
     d_theta = delta / DEPTH
